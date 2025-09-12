@@ -1,0 +1,15 @@
+
+/* v0.3 SequenceOrderTask styles */
+.seq{display:grid;gap:12px}
+.seq__pool{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px}
+.seq__item{padding:10px 12px;border:1px solid #cfd8dc;border-radius:8px;background:#fff;cursor:pointer;font-size:16px}
+.seq__item[aria-pressed="true"]{opacity:.5}
+.seq__target{min-height:44px;border:1px dashed #b0bec5;border-radius:8px;padding:8px;display:flex;flex-wrap:wrap;gap:6px;background:#fafafa}
+.seq__picked{background:#fff;border:1px solid #cfd8dc;border-radius:8px;padding:6px 10px;display:flex;align-items:center;gap:8px}
+.seq__badge{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;border:1px solid #90a4ae;font-size:12px}
+.seq__controls{display:flex;gap:8px}
+.seq__btn{padding:10px 14px;border-radius:8px;border:1px solid #90a4ae;background:#eceff1;cursor:pointer}
+.seq__btn--ghost{background:transparent}
+.seq__flash{font-weight:600}
+.seq__flash[data-ok="1"]{color:#2e7d32}
+.seq__flash[data-ok="0"]{color:#c62828}
