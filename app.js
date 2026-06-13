@@ -123,8 +123,8 @@ function renderLessons() {
         ${s.total ? `<button class="btn btn-ghost reset-btn">Сбросить</button>` : ''}
       </div>
     `;
-    div.querySelector('.start-btn').onclick = () => startLesson(lesson.id);
-    if (s.total) div.querySelector('.reset-btn').onclick = () => resetLesson(lesson.id);
+    div.onclick = (e) => { if (!e.target.closest('.reset-btn')) startLesson(lesson.id); };
+    if (s.total) div.querySelector('.reset-btn').onclick = (e) => { e.stopPropagation(); resetLesson(lesson.id); };
     el.lessonList.appendChild(div);
   });
 }

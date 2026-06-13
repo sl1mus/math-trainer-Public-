@@ -154,7 +154,7 @@ body {
   animation: fadeUp .3s ease both;
 }
 .lesson:last-child { border-bottom: none; }
-.lesson:hover { background: var(--bg-hover); margin: 0 -32px; padding: 22px 32px; }
+.lesson:hover { background: var(--bg-hover); }
 
 .lesson-icon-wrap {
   font-family: var(--font-display);
@@ -388,7 +388,7 @@ input[data-role="answer"]::placeholder { color: var(--text-3); font-size: 15px; 
   .header-inner { padding: 0 16px; }
   .home-hero { padding: 48px 0 40px; }
   .lesson { grid-template-columns: 48px 1fr; gap: 16px; padding: 18px 0; }
-  .lesson:hover { margin: 0 -16px; padding: 18px 16px; }
+  .lesson:hover { background: var(--bg-hover); }
   .lesson-right { display: none; }
   .lesson h3 { font-size: 18px; }
   .q { font-size: 18px; }
