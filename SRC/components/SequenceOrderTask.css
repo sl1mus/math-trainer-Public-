@@ -1,91 +1,65 @@
-/* v0.3 SequenceOrderTask — styled to match app palette */
-.seq { display: grid; gap: 14px; }
-
-.seq__label { font-size: 13px; color: var(--muted, #6e6690); font-weight: 600; }
+/* SequenceOrderTask v0.5 — dark theme */
+.seq { display: grid; gap: 12px; }
+.seq__label { font-size: 12px; color: var(--text-muted); font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
 
 .seq__pool {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 10px;
-  border: 1px dashed #cfc3ff;
-  border-radius: 10px;
-  min-height: 48px;
-  background: #faf7ff;
+  background: var(--bg-2);
+  border: 1px dashed var(--border-light);
+  border-radius: var(--r-sm);
+  padding: 10px; min-height: 50px;
+  display: flex; flex-wrap: wrap; gap: 8px;
 }
-
 .seq__item {
-  padding: 8px 12px;
-  border: 1px solid #d8ccff;
-  border-radius: 8px;
-  background: #fff;
-  cursor: pointer;
-  font-size: 15px;
-  font-family: inherit;
-  color: var(--text, #2a2340);
-  transition: background 0.15s, opacity 0.15s;
+  padding: 8px 14px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--r-sm);
+  background: var(--bg-card);
+  color: var(--text); cursor: pointer;
+  font-size: 13px; font-family: inherit;
+  transition: all .15s;
 }
-.seq__item:hover:not([disabled]) { background: #efe9ff; }
-.seq__item[aria-pressed="true"] { opacity: 0.4; cursor: default; }
+.seq__item:hover:not([disabled]) { border-color: var(--accent); background: var(--accent-dim); }
+.seq__item[aria-pressed="true"] { opacity: .3; cursor: default; }
 
 .seq__target {
-  min-height: 52px;
-  border: 2px solid var(--accent-strong, #9e84ff);
-  border-radius: 10px;
-  padding: 8px 10px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  background: #fbf8ff;
+  min-height: 54px;
+  border: 1px solid var(--accent);
+  background: var(--accent-dim);
+  border-radius: var(--r-sm);
+  padding: 8px; display: flex; flex-wrap: wrap; gap: 6px;
 }
-
 .seq__picked {
-  background: #fff;
-  border: 1px solid #cfc3ff;
-  border-radius: 8px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--r-sm);
   padding: 6px 10px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 15px;
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13px; color: var(--text);
 }
-
 .seq__badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: var(--accent-strong, #9e84ff);
-  color: #fff;
-  font-size: 12px;
-  font-weight: 700;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--accent); color: #fff;
+  font-size: 11px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }
-
 .seq__controls { display: flex; gap: 8px; flex-wrap: wrap; }
-
 .seq__btn {
-  padding: 10px 14px;
-  border-radius: 10px;
-  border: none;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-  background: var(--accent-strong, #9e84ff);
-  color: #fff;
+  padding: 10px 16px; border-radius: var(--r-sm);
+  border: none; font-family: inherit; font-weight: 700;
+  cursor: pointer; font-size: 14px;
+  background: var(--accent); color: #fff;
+  transition: all .15s;
 }
+.seq__btn:hover { background: var(--accent-h); }
 .seq__btn--ghost {
-  background: #ede7ff;
-  color: #3a2b7f;
+  background: var(--bg-card); color: var(--text-muted);
+  border: 1px solid var(--border-light);
 }
-
+.seq__btn--ghost:hover { border-color: var(--border-light); background: var(--bg-hover); color: var(--text); }
 .seq__flash {
-  font-weight: 600;
-  padding: 8px 12px;
-  border-radius: 8px;
-  min-height: 36px;
+  padding: 8px 12px; border-radius: var(--r-sm);
+  font-weight: 600; min-height: 36px; font-size: 14px;
 }
-.seq__flash[data-ok="1"] { background: #ecfbf4; color: #0e6b4d; border: 1px solid #b5ead7; }
-.seq__flash[data-ok="0"] { background: #fff1f1; color: #7a1a1a; border: 1px solid #ffd2d2; }
+.seq__flash[data-ok="1"] { background: var(--green-dim); color: var(--green); border: 1px solid rgba(0,224,135,.2); }
+.seq__flash[data-ok="0"] { background: var(--red-dim);   color: var(--red);   border: 1px solid rgba(255,77,90,.2); }

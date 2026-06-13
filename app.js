@@ -1,39 +1,46 @@
-/* v0.4 */
+/* v0.5 */
 const LESSONS_URL = 'data/lessons.json';
-const LS_KEY = 'mt4_stats_v0_1';
+const LS_KEY      = 'mt4_stats_v0_1';
+const LS_BEST     = 'mt4_best_v0_1';
+const MAX_ATTEMPTS = 3;
 
 const State = {
   lessons: [],
   currentLesson: null,
   shuffledExercises: [],
-  idx: 0,
-  score: 0,
+  wrongExercises: [],
+  idx: 0, score: 0,
   attemptsForCurrent: 0,
   startedAt: 0,
   exerciseRecorded: false,
+  isReviewMode: false,
 };
 
 const el = {
-  lessonList: document.getElementById('lesson-list'),
-  exerciseArea: document.getElementById('exercise-area'),
-  intro: document.getElementById('intro'),
-  summary: document.getElementById('summary-area'),
-  summaryBody: document.getElementById('summary-body'),
-  lessonTitle: document.getElementById('lesson-title'),
-  progress: document.getElementById('progress'),
-  exerciseBody: document.getElementById('exercise-body'),
+  lessonList:    document.getElementById('lesson-list'),
+  exerciseArea:  document.getElementById('exercise-area'),
+  intro:         document.getElementById('intro'),
+  summary:       document.getElementById('summary-area'),
+  summaryBody:   document.getElementById('summary-body'),
+  lessonTitle:   document.getElementById('lesson-title'),
+  progress:      document.getElementById('progress'),
+  exerciseBody:  document.getElementById('exercise-body'),
   backToLessons: document.getElementById('back-to-lessons'),
-  toLessonsFromSummary: document.getElementById('to-lessons-from-summary'),
-  hintBtn: document.getElementById('hint-btn'),
-  checkBtn: document.getElementById('check-btn'),
-  nextBtn: document.getElementById('next-btn'),
+  toHome:        document.getElementById('to-lessons-from-summary'),
+  hintBtn:       document.getElementById('hint-btn'),
+  checkBtn:      document.getElementById('check-btn'),
+  nextBtn:       document.getElementById('next-btn'),
+  retryBtn:      document.getElementById('retry-wrong-btn'),
+  globalStats:   document.getElementById('global-stats'),
 };
 
-function loadStats() {
-  try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}'); } catch(e) { return {}; }
-}
-function saveStats(stats) { localStorage.setItem(LS_KEY, JSON.stringify(stats)); }
+/* ── Storage ─────────────────────────────────────────────────── */
+function loadStats()     { try { return JSON.parse(localStorage.getItem(LS_KEY)  || '{}'); } catch(e) { return {}; } }
+function saveStats(s)    { localStorage.setItem(LS_KEY,  JSON.stringify(s)); }
+function loadBest()      { try { return JSON.parse(localStorage.getItem(LS_BEST) || '{}'); } catch(e) { return {}; } }
+function saveBest(b)     { localStorage.setItem(LS_BEST, JSON.stringify(b)); }
 
+/* ── Helpers ─────────────────────────────────────────────────── */
 function shuffle(arr) {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
@@ -42,131 +49,173 @@ function shuffle(arr) {
   }
   return a;
 }
+function stars(pct) { return pct >= 85 ? 3 : pct >= 60 ? 2 : pct >= 1 ? 1 : 0; }
+function starsHtml(n, color) {
+  const filled = `<span style="color:${color || '#ffcd3c'}">★</span>`;
+  const empty  = `<span style="color:#2e3352">★</span>`;
+  return filled.repeat(n) + empty.repeat(3 - n);
+}
+function normalizeAnswer(ans) {
+  return String(ans).toLowerCase().trim().replace(/\s*\/\s*/g, '/');
+}
+function formatMs(ms) {
+  const s = Math.round(ms / 1000), m = Math.floor(s / 60), r = s % 60;
+  return `${m} мин ${r} сек`;
+}
 
+/* ── Boot ────────────────────────────────────────────────────── */
 fetch(LESSONS_URL)
   .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
   .then(data => { State.lessons = data.lessons; renderLessons(); })
   .catch(() => {
-    el.lessonList.innerHTML = '<p style="color:var(--red);padding:12px">Не удалось загрузить задания. Обновите страницу.</p>';
+    el.lessonList.innerHTML = '<p style="color:var(--red);padding:16px">Не удалось загрузить задания. Обновите страницу.</p>';
   });
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch(() => {});
+}
+
+/* ── Home screen ─────────────────────────────────────────────── */
+function renderGlobalStats() {
+  const s = loadStats();
+  let done = 0, correct = 0;
+  for (const v of Object.values(s)) { done += v.total || 0; correct += v.correct || 0; }
+  if (!done) { el.globalStats.classList.add('hidden'); return; }
+  const acc = Math.round(100 * correct / done);
+  const started = Object.values(s).filter(v => v.total > 0).length;
+  el.globalStats.classList.remove('hidden');
+  el.globalStats.innerHTML = `
+    <div class="gstat"><div class="gstat-num">${done}</div><div class="gstat-label">заданий</div></div>
+    <div class="gstat-sep"></div>
+    <div class="gstat"><div class="gstat-num">${acc}%</div><div class="gstat-label">точность</div></div>
+    <div class="gstat-sep"></div>
+    <div class="gstat"><div class="gstat-num">${started}</div><div class="gstat-label">из ${State.lessons.length} тем</div></div>
+  `;
+}
 
 function renderLessons() {
   const stats = loadStats();
+  const best  = loadBest();
+  renderGlobalStats();
   el.lessonList.innerHTML = '';
   State.lessons.forEach(lesson => {
-    const s = stats[lesson.id] || { correct: 0, total: 0, timeMs: 0 };
+    const s = stats[lesson.id] || { correct: 0, total: 0 };
+    const b = best[lesson.id] || 0;
     const pct = s.total ? Math.round(100 * s.correct / s.total) : 0;
-    const hasProgress = s.total > 0;
-    const color = lesson.color || '#9e84ff';
-    const icon = lesson.icon || '?';
+    const n = stars(b);
+    const color = lesson.color || '#5b8eff';
 
     const div = document.createElement('div');
     div.className = 'lesson';
-    div.style.borderTop = `4px solid ${color}`;
     div.innerHTML = `
-      <div class="lesson-icon-wrap" style="background:${color}22">
-        <span class="lesson-icon" style="color:${color}">${icon}</span>
-      </div>
+      <div class="lesson-bar" style="background:${color}"></div>
+      <div class="lesson-icon-wrap" style="background:${color}22; color:${color}">${lesson.icon || '?'}</div>
       <h3>${lesson.title}</h3>
       <div class="meta">${lesson.desc}</div>
-      <div class="meta">${hasProgress
-        ? `Правильно: <strong>${pct}%</strong> · Заданий: ${s.total}`
-        : 'Ещё не начато'
-      }</div>
+      <div class="lesson-stars">${starsHtml(n, color)}</div>
+      ${s.total ? `
+        <div class="lesson-mini-bar">
+          <div class="lesson-mini-fill" style="background:${color}; width:${pct}%"></div>
+        </div>
+        <div class="meta">${pct}% верно · ${s.total} заданий</div>
+      ` : '<div class="meta" style="color:var(--text-dim)">Ещё не начато</div>'}
       <div class="lesson-footer">
         <button class="btn btn-primary start-btn">Начать</button>
-        ${hasProgress ? '<button class="btn btn-ghost reset-btn">Сбросить</button>' : ''}
+        ${s.total ? `<button class="btn btn-ghost reset-btn">Сбросить</button>` : ''}
       </div>
     `;
     div.querySelector('.start-btn').onclick = () => startLesson(lesson.id);
-    if (hasProgress) {
-      div.querySelector('.reset-btn').onclick = () => resetLesson(lesson.id);
-    }
+    if (s.total) div.querySelector('.reset-btn').onclick = () => resetLesson(lesson.id);
     el.lessonList.appendChild(div);
   });
 }
 
-function resetLesson(lessonId) {
-  const stats = loadStats();
-  delete stats[lessonId];
-  saveStats(stats);
+function resetLesson(id) {
+  const s = loadStats(); delete s[id]; saveStats(s);
+  const b = loadBest();  delete b[id]; saveBest(b);
   renderLessons();
 }
 
-function startLesson(lessonId) {
-  const lesson = State.lessons.find(l => l.id === lessonId);
-  State.currentLesson = lesson;
+/* ── Lesson flow ─────────────────────────────────────────────── */
+function startLesson(id) {
+  const lesson = State.lessons.find(l => l.id === id);
+  State.currentLesson  = lesson;
   State.shuffledExercises = shuffle(lesson.exercises);
-  State.idx = 0;
-  State.score = 0;
+  State.wrongExercises = [];
+  State.isReviewMode   = false;
+  State.idx = 0; State.score = 0;
   State.startedAt = Date.now();
-  showExercise();
-  el.intro.classList.add('hidden');
-  el.summary.classList.add('hidden');
-  el.exerciseArea.classList.remove('hidden');
+  show('exercise');
   el.lessonTitle.textContent = lesson.title;
+  showExercise();
 }
 
-el.backToLessons.onclick = () => {
+function startReviewMode() {
+  State.shuffledExercises = shuffle([...State.wrongExercises]);
+  State.wrongExercises = [];
+  State.isReviewMode   = true;
+  State.idx = 0; State.score = 0;
+  State.startedAt = Date.now();
+  show('exercise');
+  el.lessonTitle.textContent = `Повтор ошибок: ${State.currentLesson.title}`;
+  showExercise();
+}
+
+function show(screen) {
+  el.intro.classList.add('hidden');
   el.exerciseArea.classList.add('hidden');
   el.summary.classList.add('hidden');
-  el.intro.classList.remove('hidden');
-  renderLessons();
-};
-el.toLessonsFromSummary.onclick = () => {
-  el.summary.classList.add('hidden');
-  el.intro.classList.remove('hidden');
-  renderLessons();
-};
+  if (screen === 'home')     { el.intro.classList.remove('hidden'); renderLessons(); }
+  if (screen === 'exercise') { el.exerciseArea.classList.remove('hidden'); }
+  if (screen === 'summary')  { el.summary.classList.remove('hidden'); }
+}
 
-function currentExercise() { return State.shuffledExercises[State.idx]; }
+/* ── Exercise render ─────────────────────────────────────────── */
+function cur() { return State.shuffledExercises[State.idx]; }
 
 function showExercise() {
-  const ex = currentExercise();
+  const ex    = cur();
   const total = State.shuffledExercises.length;
-  const pct = Math.round(100 * State.idx / total);
+  const pct   = Math.round(100 * State.idx / total);
 
   el.progress.innerHTML = `
-    <div class="progress-label">Задание ${State.idx + 1} из ${total}</div>
+    <div class="progress-label">Задание ${State.idx + 1} / ${total}</div>
     <div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div>
   `;
 
   State.attemptsForCurrent = 0;
-  State.exerciseRecorded = false;
+  State.exerciseRecorded   = false;
   el.nextBtn.classList.add('hidden');
   el.checkBtn.disabled = false;
   el.checkBtn.classList.remove('hidden');
   el.hintBtn.classList.remove('hidden');
   el.hintBtn.disabled = !ex.hints || !ex.hints.length;
 
-  const container = document.createElement('div');
-  container.className = 'exercise';
-  container.innerHTML = `<div class="q">${ex.q}</div>`;
+  const wrap = document.createElement('div');
+  wrap.className = 'exercise';
+  wrap.innerHTML = `<div class="q">${ex.q}</div>`;
 
   if (ex.type === 'choice') {
     const box = document.createElement('div');
     box.className = 'choices';
     shuffle(ex.options).forEach(opt => {
       const c = document.createElement('div');
-      c.className = 'choice';
-      c.textContent = opt;
+      c.className = 'choice'; c.textContent = opt;
       c.onclick = () => {
         [...box.children].forEach(ch => ch.classList.remove('selected'));
         c.classList.add('selected');
       };
       box.appendChild(c);
     });
-    container.appendChild(box);
+    wrap.appendChild(box);
   }
 
   if (ex.type === 'input') {
     const input = document.createElement('input');
-    input.type = 'text';
-    input.placeholder = 'Введите ответ';
+    input.type = 'text'; input.placeholder = 'Введите ответ';
     input.dataset.role = 'answer';
     input.onkeydown = e => { if (e.key === 'Enter') checkAnswer(); };
-    container.appendChild(input);
-    // Focus input on desktop
+    wrap.appendChild(input);
     requestAnimationFrame(() => input.focus());
   }
 
@@ -174,12 +223,10 @@ function showExercise() {
     el.checkBtn.classList.add('hidden');
     el.hintBtn.classList.add('hidden');
     const correctOrder = ex.answer.map(a => ex.steps.indexOf(a));
-    const taskContainer = document.createElement('div');
-    container.appendChild(taskContainer);
+    const taskDiv = document.createElement('div');
+    wrap.appendChild(taskDiv);
     new SequenceOrderTask({
-      container: taskContainer,
-      items: ex.steps,
-      correctOrder,
+      container: taskDiv, items: ex.steps, correctOrder,
       onFinish: ok => {
         if (ok && !State.exerciseRecorded) {
           State.exerciseRecorded = true;
@@ -194,82 +241,73 @@ function showExercise() {
   }
 
   el.exerciseBody.innerHTML = '';
-  el.exerciseBody.appendChild(container);
+  el.exerciseBody.appendChild(wrap);
 
-  const hintBox = document.createElement('div');
-  hintBox.id = 'hint-box';
+  const hintBox = document.createElement('div'); hintBox.id = 'hint-box';
+  const fb      = document.createElement('div'); fb.id = 'feedback';
   el.exerciseBody.appendChild(hintBox);
-
-  const fb = document.createElement('div');
-  fb.id = 'feedback';
   el.exerciseBody.appendChild(fb);
 }
 
+/* ── Hint ────────────────────────────────────────────────────── */
 function revealHint() {
-  const ex = currentExercise();
-  if (!ex.hints || !ex.hints.length) return;
-  const box = document.getElementById('hint-box');
+  const ex = cur(); if (!ex.hints || !ex.hints.length) return;
+  const box  = document.getElementById('hint-box');
   const shown = box.querySelectorAll('.hint').length;
   if (shown < ex.hints.length) {
     const h = document.createElement('div');
-    h.className = 'hint';
-    h.textContent = ex.hints[shown];
+    h.className = 'hint'; h.textContent = ex.hints[shown];
     box.appendChild(h);
   }
 }
 
-function normalizeAnswer(ans) {
-  return String(ans).toLowerCase().trim().replace(/\s*\/\s*/g, '/');
-}
-
-function getUserAnswer(ex) {
+/* ── Answer checking ─────────────────────────────────────────── */
+function getAnswer(ex) {
   if (ex.type === 'choice') {
     const sel = document.querySelector('.choice.selected');
     return sel ? sel.textContent : null;
   }
   if (ex.type === 'input') {
-    const input = document.querySelector('input[data-role="answer"]');
-    return input ? input.value.trim() : null;
+    const inp = document.querySelector('input[data-role="answer"]');
+    return inp ? inp.value.trim() : null;
   }
   return null;
 }
 
 function isCorrect(ex, ans) {
   if (ans == null || ans === '') return false;
-  return normalizeAnswer(ans) === normalizeAnswer(ex.answer);
+  const norm = normalizeAnswer(ans);
+  if (norm === normalizeAnswer(ex.answer)) return true;
+  if (ex.accept) return ex.accept.some(a => norm === normalizeAnswer(a));
+  return false;
 }
 
-const MAX_ATTEMPTS = 3;
-
 function checkAnswer() {
-  const ex = currentExercise();
-  const ans = getUserAnswer(ex);
+  const ex  = cur();
+  const ans = getAnswer(ex);
   State.attemptsForCurrent += 1;
-  const fb = document.getElementById('feedback');
+  const fb  = document.getElementById('feedback');
   fb.className = 'feedback';
 
   if (isCorrect(ex, ans)) {
     const hintsShown = document.getElementById('hint-box').querySelectorAll('.hint').length;
-    const scoreGain = Math.max(0.2, 1 - 0.3 * hintsShown);
-    State.score += scoreGain;
-    fb.textContent = `Верно! +${scoreGain.toFixed(1)} балла`;
+    const gain = Math.max(0.2, 1 - 0.3 * hintsShown);
+    State.score += gain;
+    fb.textContent = `Верно! +${gain.toFixed(1)} балла`;
     fb.classList.add('ok');
-    el.checkBtn.disabled = true;
-    el.hintBtn.disabled = true;
+    el.checkBtn.disabled = true; el.hintBtn.disabled = true;
     el.nextBtn.classList.remove('hidden');
-    if (!State.exerciseRecorded) {
-      State.exerciseRecorded = true;
-      updateProgress(true);
-    }
+    if (!State.exerciseRecorded) { State.exerciseRecorded = true; updateProgress(true); }
+
   } else if (State.attemptsForCurrent >= MAX_ATTEMPTS) {
     fb.textContent = `Правильный ответ: ${ex.answer}. Не расстраивайтесь — продолжайте!`;
     fb.classList.add('err');
-    el.checkBtn.disabled = true;
-    el.hintBtn.disabled = true;
+    el.checkBtn.disabled = true; el.hintBtn.disabled = true;
     el.nextBtn.classList.remove('hidden');
     if (!State.exerciseRecorded) {
       State.exerciseRecorded = true;
       updateProgress(false);
+      State.wrongExercises.push(ex);
     }
   } else {
     fb.textContent = State.attemptsForCurrent === 1
@@ -281,57 +319,58 @@ function checkAnswer() {
 
 function updateProgress(correct) {
   const key = State.currentLesson.id;
-  const stats = loadStats();
-  const item = stats[key] || { correct: 0, total: 0, timeMs: 0 };
-  item.total += 1;
-  if (correct) item.correct += 1;
-  stats[key] = item;
-  saveStats(stats);
+  const s   = loadStats();
+  const item = s[key] || { correct: 0, total: 0, timeMs: 0 };
+  item.total += 1; if (correct) item.correct += 1;
+  s[key] = item; saveStats(s);
 }
 
 function nextExercise() {
-  if (State.idx < State.shuffledExercises.length - 1) {
-    State.idx += 1;
-    showExercise();
+  if (State.idx < State.shuffledExercises.length - 1) { State.idx += 1; showExercise(); }
+  else finishLesson();
+}
+
+/* ── Summary ─────────────────────────────────────────────────── */
+function finishLesson() {
+  const duration = Date.now() - State.startedAt;
+  const s   = loadStats(); const key = State.currentLesson.id;
+  const item = s[key] || { correct: 0, total: 0, timeMs: 0 };
+  item.timeMs += duration; s[key] = item; saveStats(s);
+
+  const total = State.shuffledExercises.length;
+  const pct   = Math.round(100 * State.score / total);
+  const medal = pct >= 90 ? '🏆' : pct >= 70 ? '⭐' : pct >= 50 ? '👍' : '💪';
+
+  // Update best score
+  if (!State.isReviewMode) {
+    const best = loadBest();
+    if (pct > (best[key] || 0)) { best[key] = pct; saveBest(best); }
+  }
+
+  show('summary');
+  el.summaryBody.innerHTML = `
+    <div class="summary-medal">${medal}</div>
+    <div class="stat">
+      <div class="kpi"><div class="kpi-val">${State.score.toFixed(1)}</div><div class="kpi-label">Баллы</div></div>
+      <div class="kpi"><div class="kpi-val">${pct}%</div><div class="kpi-label">Результат</div></div>
+      <div class="kpi"><div class="kpi-val">${total}</div><div class="kpi-label">Заданий</div></div>
+      <div class="kpi"><div class="kpi-val" style="font-size:20px">${formatMs(duration)}</div><div class="kpi-label">Время</div></div>
+    </div>
+    <p class="summary-note">Подсказки снижают баллы за задание. Повторите блок — улучшите результат.</p>
+  `;
+
+  if (State.wrongExercises.length > 0 && !State.isReviewMode) {
+    el.retryBtn.textContent = `Повторить ошибки (${State.wrongExercises.length})`;
+    el.retryBtn.classList.remove('hidden');
   } else {
-    finishLesson();
+    el.retryBtn.classList.add('hidden');
   }
 }
 
-function finishLesson() {
-  const duration = Date.now() - State.startedAt;
-  const stats = loadStats();
-  const key = State.currentLesson.id;
-  const item = stats[key] || { correct: 0, total: 0, timeMs: 0 };
-  item.timeMs += duration;
-  stats[key] = item;
-  saveStats(stats);
-
-  const total = State.shuffledExercises.length;
-  const pct = Math.round(100 * State.score / total);
-  const medal = pct >= 90 ? '🏆' : pct >= 70 ? '⭐' : pct >= 50 ? '👍' : '💪';
-
-  el.exerciseArea.classList.add('hidden');
-  el.summary.classList.remove('hidden');
-  el.summaryBody.innerHTML = `
-    <div style="text-align:center;font-size:40px;margin-bottom:8px">${medal}</div>
-    <div class="stat">
-      <div class="kpi"><div>Баллы</div><div style="font-size:32px;font-weight:800">${State.score.toFixed(1)}</div></div>
-      <div class="kpi"><div>Результат</div><div style="font-size:32px;font-weight:800">${pct}%</div></div>
-      <div class="kpi"><div>Заданий</div><div style="font-size:32px;font-weight:800">${total}</div></div>
-      <div class="kpi"><div>Время</div><div style="font-size:18px">${formatMs(duration)}</div></div>
-    </div>
-    <p class="meta" style="margin-top:12px">Подсказки уменьшают баллы за задание. Повторите блок для улучшения результата.</p>
-  `;
-}
-
-function formatMs(ms) {
-  const s = Math.round(ms / 1000);
-  const m = Math.floor(s / 60);
-  const r = s % 60;
-  return `${m} мин ${r} сек`;
-}
-
-el.hintBtn.onclick = revealHint;
-el.checkBtn.onclick = checkAnswer;
-el.nextBtn.onclick = nextExercise;
+/* ── Event wiring ────────────────────────────────────────────── */
+el.backToLessons.onclick = () => show('home');
+el.toHome.onclick        = () => show('home');
+el.hintBtn.onclick       = revealHint;
+el.checkBtn.onclick      = checkAnswer;
+el.nextBtn.onclick       = nextExercise;
+el.retryBtn.onclick      = startReviewMode;
