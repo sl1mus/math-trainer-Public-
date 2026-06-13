@@ -1,10 +1,10 @@
-/* v0.2 */
+/* v0.3 */
 const LESSONS_URL = 'data/lessons.json';
 const LS_KEY = 'mt4_stats_v0_1';
 
 const State = {
   lessons: [], currentLesson: null, idx: 0, score: 0,
-  attemptsForCurrent: 0, startedAt: 0,
+  attemptsForCurrent: 0, startedAt: 0, exerciseRecorded: false,
 };
 
 const el = {
@@ -46,7 +46,7 @@ function renderLessons() {
     div.innerHTML = `
       <h3>${lesson.title}</h3>
       <div class="meta">${lesson.desc}</div>
-      <div class="meta">Пройдено: ${pct}% · Заданий: ${s.total || 0}</div>
+      <div class="meta">Правильно: ${pct}% · Пройдено заданий: ${s.total || 0}</div>
       <button class="btn btn-primary">Начать</button>
     `;
     div.querySelector('button').onclick = () => startLesson(lesson.id);
@@ -85,11 +85,12 @@ function showExercise() {
   const ex = currentExercise();
   el.progress.textContent = `Задание ${State.idx + 1} из ${State.currentLesson.exercises.length}`;
   State.attemptsForCurrent = 0;
+  State.exerciseRecorded = false;
   el.nextBtn.classList.add('hidden');
   el.checkBtn.disabled = false;
-  el.hintBtn.disabled = false;
   el.checkBtn.classList.remove('hidden');
   el.hintBtn.classList.remove('hidden');
+  el.hintBtn.disabled = !ex.hints || !ex.hints.length;
 
   const container = document.createElement('div');
   container.className = 'exercise';
@@ -131,11 +132,12 @@ function showExercise() {
       items: ex.steps,
       correctOrder,
       onFinish: ok => {
-        if (ok) {
+        if (ok && !State.exerciseRecorded) {
+          State.exerciseRecorded = true;
           State.score += 1;
           el.nextBtn.classList.remove('hidden');
           updateProgressAfterExercise(true);
-        } else {
+        } else if (!ok && !State.exerciseRecorded) {
           updateProgressAfterExercise(false);
         }
       },
@@ -167,6 +169,10 @@ function revealHint() {
   }
 }
 
+function normalizeAnswer(ans) {
+  return String(ans).toLowerCase().trim().replace(/\s*\/\s*/g, '/');
+}
+
 function getUserAnswer(ex) {
   if (ex.type === 'choice') {
     const sel = document.querySelector('.choice.selected');
@@ -180,9 +186,11 @@ function getUserAnswer(ex) {
 }
 
 function isCorrect(ex, ans) {
-  if (ans == null) return false;
-  return String(ans).toLowerCase() === String(ex.answer).toLowerCase();
+  if (ans == null || ans === '') return false;
+  return normalizeAnswer(ans) === normalizeAnswer(ex.answer);
 }
+
+const MAX_ATTEMPTS = 3;
 
 function checkAnswer() {
   const ex = currentExercise();
@@ -190,6 +198,7 @@ function checkAnswer() {
   State.attemptsForCurrent += 1;
   const fb = document.getElementById('feedback');
   fb.className = 'feedback';
+
   if (isCorrect(ex, ans)) {
     const hintsShown = document.getElementById('hint-box').querySelectorAll('.hint').length;
     const scoreGain = Math.max(0.2, 1 - 0.3 * hintsShown);
@@ -199,13 +208,25 @@ function checkAnswer() {
     el.checkBtn.disabled = true;
     el.hintBtn.disabled = true;
     el.nextBtn.classList.remove('hidden');
-    updateProgressAfterExercise(true);
-  } else {
-    fb.textContent = State.attemptsForCurrent >= 2
-      ? 'Неверно. Попробуйте ещё раз или откройте подсказку.'
-      : 'Почти! Подумайте ещё…';
+    if (!State.exerciseRecorded) {
+      State.exerciseRecorded = true;
+      updateProgressAfterExercise(true);
+    }
+  } else if (State.attemptsForCurrent >= MAX_ATTEMPTS) {
+    fb.textContent = `Правильный ответ: ${ex.answer}. Не расстраивайтесь — продолжайте!`;
     fb.classList.add('err');
-    updateProgressAfterExercise(false);
+    el.checkBtn.disabled = true;
+    el.hintBtn.disabled = true;
+    el.nextBtn.classList.remove('hidden');
+    if (!State.exerciseRecorded) {
+      State.exerciseRecorded = true;
+      updateProgressAfterExercise(false);
+    }
+  } else {
+    fb.textContent = State.attemptsForCurrent === 1
+      ? 'Почти! Подумайте ещё…'
+      : 'Неверно. Попробуйте ещё раз или откройте подсказку.';
+    fb.classList.add('err');
   }
 }
 
@@ -213,8 +234,8 @@ function updateProgressAfterExercise(correct) {
   const key = State.currentLesson.id;
   const stats = loadStats();
   const item = stats[key] || { correct: 0, total: 0, timeMs: 0 };
-  if (correct) item.correct += 1;
   item.total += 1;
+  if (correct) item.correct += 1;
   stats[key] = item;
   saveStats(stats);
 }
