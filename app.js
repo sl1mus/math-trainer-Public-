@@ -1,4 +1,4 @@
-/* v0.5 */
+/* v0.6 */
 const LESSONS_URL = 'data/lessons.json';
 const LS_KEY      = 'mt4_stats_v0_1';
 const LS_BEST     = 'mt4_best_v0_1';
@@ -50,9 +50,9 @@ function shuffle(arr) {
   return a;
 }
 function stars(pct) { return pct >= 85 ? 3 : pct >= 60 ? 2 : pct >= 1 ? 1 : 0; }
-function starsHtml(n, color) {
-  const filled = `<span style="color:${color || '#ffcd3c'}">★</span>`;
-  const empty  = `<span style="color:#2e3352">★</span>`;
+function starsHtml(n) {
+  const filled = `<span style="color:#fff">★</span>`;
+  const empty  = `<span style="color:rgba(255,255,255,.15)">★</span>`;
   return filled.repeat(n) + empty.repeat(3 - n);
 }
 function normalizeAnswer(ans) {
@@ -85,11 +85,9 @@ function renderGlobalStats() {
   const started = Object.values(s).filter(v => v.total > 0).length;
   el.globalStats.classList.remove('hidden');
   el.globalStats.innerHTML = `
-    <div class="gstat"><div class="gstat-num">${done}</div><div class="gstat-label">заданий</div></div>
-    <div class="gstat-sep"></div>
-    <div class="gstat"><div class="gstat-num">${acc}%</div><div class="gstat-label">точность</div></div>
-    <div class="gstat-sep"></div>
-    <div class="gstat"><div class="gstat-num">${started}</div><div class="gstat-label">из ${State.lessons.length} тем</div></div>
+    <div class="gstat"><div class="gstat-num">${done}</div><div class="gstat-label">Заданий решено</div></div>
+    <div class="gstat"><div class="gstat-num">${acc}%</div><div class="gstat-label">Точность</div></div>
+    <div class="gstat"><div class="gstat-num">${started}/${State.lessons.length}</div><div class="gstat-label">Тем начато</div></div>
   `;
 }
 
@@ -108,18 +106,20 @@ function renderLessons() {
     const div = document.createElement('div');
     div.className = 'lesson';
     div.innerHTML = `
-      <div class="lesson-bar" style="background:${color}"></div>
-      <div class="lesson-icon-wrap">${lesson.icon || '?'} &nbsp;${lesson.title}</div>
-      <h3>${lesson.desc}</h3>
-      <div class="lesson-stars">${starsHtml(n, '#fff')}</div>
-      ${s.total ? `
-        <div class="lesson-mini-bar">
-          <div class="lesson-mini-fill" style="background:${color}; width:${pct}%"></div>
-        </div>
-        <div class="meta">${pct}% верно · ${s.total} заданий</div>
-      ` : '<div class="meta">Ещё не начато</div>'}
-      <div class="lesson-footer">
-        <button class="btn btn-primary start-btn">Начать</button>
+      <div class="lesson-icon-wrap" style="color:${color}">${lesson.icon || '?'}</div>
+      <div class="lesson-info">
+        <h3>${lesson.title}</h3>
+        <div class="meta">${lesson.desc}</div>
+        ${s.total ? `
+          <div class="lesson-prog">
+            <div class="lesson-mini-bar"><div class="lesson-mini-fill" style="background:${color}; width:${pct}%"></div></div>
+            <span class="lesson-pct-label">${pct}% верно · ${s.total} заданий</span>
+          </div>
+        ` : ''}
+      </div>
+      <div class="lesson-right">
+        <div class="lesson-stars">${starsHtml(n)}</div>
+        <button class="btn btn-primary start-btn">Начать →</button>
         ${s.total ? `<button class="btn btn-ghost reset-btn">Сбросить</button>` : ''}
       </div>
     `;
