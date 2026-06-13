@@ -24,6 +24,7 @@ class SequenceOrderTask {
   render() {
     this.root.innerHTML = `
       <div class="seq">
+        <div class="seq__label">Нажимайте шаги в правильном порядке:</div>
         <div class="seq__pool" role="list" aria-label="Варианты">
           ${this.items.map(it => `
             <button class="seq__item" data-id="${it.id}" role="listitem" aria-pressed="false">
@@ -31,6 +32,7 @@ class SequenceOrderTask {
             </button>
           `).join('')}
         </div>
+        <div class="seq__label">Ваш порядок:</div>
         <div class="seq__target" role="list" aria-label="Порядок решения"></div>
         <div class="seq__controls">
           <button id="seq-check" class="seq__btn">Проверить</button>

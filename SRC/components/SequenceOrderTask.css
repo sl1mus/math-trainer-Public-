@@ -1,15 +1,91 @@
+/* v0.3 SequenceOrderTask — styled to match app palette */
+.seq { display: grid; gap: 14px; }
 
-/* v0.3 SequenceOrderTask styles */
-.seq{display:grid;gap:12px}
-.seq__pool{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px}
-.seq__item{padding:10px 12px;border:1px solid #cfd8dc;border-radius:8px;background:#fff;cursor:pointer;font-size:16px}
-.seq__item[aria-pressed="true"]{opacity:.5}
-.seq__target{min-height:44px;border:1px dashed #b0bec5;border-radius:8px;padding:8px;display:flex;flex-wrap:wrap;gap:6px;background:#fafafa}
-.seq__picked{background:#fff;border:1px solid #cfd8dc;border-radius:8px;padding:6px 10px;display:flex;align-items:center;gap:8px}
-.seq__badge{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;border:1px solid #90a4ae;font-size:12px}
-.seq__controls{display:flex;gap:8px}
-.seq__btn{padding:10px 14px;border-radius:8px;border:1px solid #90a4ae;background:#eceff1;cursor:pointer}
-.seq__btn--ghost{background:transparent}
-.seq__flash{font-weight:600}
-.seq__flash[data-ok="1"]{color:#2e7d32}
-.seq__flash[data-ok="0"]{color:#c62828}
+.seq__label { font-size: 13px; color: var(--muted, #6e6690); font-weight: 600; }
+
+.seq__pool {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px;
+  border: 1px dashed #cfc3ff;
+  border-radius: 10px;
+  min-height: 48px;
+  background: #faf7ff;
+}
+
+.seq__item {
+  padding: 8px 12px;
+  border: 1px solid #d8ccff;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 15px;
+  font-family: inherit;
+  color: var(--text, #2a2340);
+  transition: background 0.15s, opacity 0.15s;
+}
+.seq__item:hover:not([disabled]) { background: #efe9ff; }
+.seq__item[aria-pressed="true"] { opacity: 0.4; cursor: default; }
+
+.seq__target {
+  min-height: 52px;
+  border: 2px solid var(--accent-strong, #9e84ff);
+  border-radius: 10px;
+  padding: 8px 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  background: #fbf8ff;
+}
+
+.seq__picked {
+  background: #fff;
+  border: 1px solid #cfc3ff;
+  border-radius: 8px;
+  padding: 6px 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+}
+
+.seq__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent-strong, #9e84ff);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.seq__controls { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.seq__btn {
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: none;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  background: var(--accent-strong, #9e84ff);
+  color: #fff;
+}
+.seq__btn--ghost {
+  background: #ede7ff;
+  color: #3a2b7f;
+}
+
+.seq__flash {
+  font-weight: 600;
+  padding: 8px 12px;
+  border-radius: 8px;
+  min-height: 36px;
+}
+.seq__flash[data-ok="1"] { background: #ecfbf4; color: #0e6b4d; border: 1px solid #b5ead7; }
+.seq__flash[data-ok="0"] { background: #fff1f1; color: #7a1a1a; border: 1px solid #ffd2d2; }
