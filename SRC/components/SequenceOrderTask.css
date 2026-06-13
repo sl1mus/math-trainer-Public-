@@ -1,72 +1,65 @@
-/* SequenceOrderTask — SpaceX theme */
-.seq { display: grid; gap: 14px; }
-.seq__label {
-  font-size: 10px; color: rgba(255,255,255,.35);
-  font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
-}
+/* SequenceOrderTask v0.5 — dark theme */
+.seq { display: grid; gap: 12px; }
+.seq__label { font-size: 12px; color: var(--text-muted); font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
 
 .seq__pool {
-  background: transparent;
-  border: 1px dashed rgba(255,255,255,.15);
-  padding: 12px; min-height: 52px;
+  background: var(--bg-2);
+  border: 1px dashed var(--border-light);
+  border-radius: var(--r-sm);
+  padding: 10px; min-height: 50px;
   display: flex; flex-wrap: wrap; gap: 8px;
 }
 .seq__item {
-  padding: 9px 16px;
-  border: 1px solid rgba(255,255,255,.15);
-  background: #0f0f0f;
-  color: rgba(255,255,255,.7); cursor: pointer;
+  padding: 8px 14px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--r-sm);
+  background: var(--bg-card);
+  color: var(--text); cursor: pointer;
   font-size: 13px; font-family: inherit;
   transition: all .15s;
 }
-.seq__item:hover:not([disabled]) {
-  border-color: rgba(255,255,255,.5);
-  color: #fff; background: #181818;
-}
-.seq__item[aria-pressed="true"] { opacity: .2; cursor: default; }
+.seq__item:hover:not([disabled]) { border-color: var(--accent); background: var(--accent-dim); }
+.seq__item[aria-pressed="true"] { opacity: .3; cursor: default; }
 
 .seq__target {
-  min-height: 56px;
-  border: 1px solid rgba(255,255,255,.25);
-  background: rgba(255,255,255,.03);
-  padding: 10px; display: flex; flex-wrap: wrap; gap: 8px;
+  min-height: 54px;
+  border: 1px solid var(--accent);
+  background: var(--accent-dim);
+  border-radius: var(--r-sm);
+  padding: 8px; display: flex; flex-wrap: wrap; gap: 6px;
 }
 .seq__picked {
-  background: #0f0f0f;
-  border: 1px solid rgba(255,255,255,.25);
-  padding: 7px 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--r-sm);
+  padding: 6px 10px;
   display: flex; align-items: center; gap: 8px;
-  font-size: 13px; color: #fff;
+  font-size: 13px; color: var(--text);
 }
 .seq__badge {
-  width: 20px; height: 20px;
-  background: #fff; color: #000;
-  font-size: 11px; font-weight: 800;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--accent); color: #fff;
+  font-size: 11px; font-weight: 700;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }
 .seq__controls { display: flex; gap: 8px; flex-wrap: wrap; }
 .seq__btn {
-  padding: 10px 20px;
+  padding: 10px 16px; border-radius: var(--r-sm);
   border: none; font-family: inherit; font-weight: 700;
-  cursor: pointer; font-size: 13px; letter-spacing: .06em; text-transform: uppercase;
-  background: #fff; color: #000;
+  cursor: pointer; font-size: 14px;
+  background: var(--accent); color: #fff;
   transition: all .15s;
 }
-.seq__btn:hover { background: rgba(255,255,255,.85); }
+.seq__btn:hover { background: var(--accent-h); }
 .seq__btn--ghost {
-  background: transparent; color: rgba(255,255,255,.5);
-  border: 1px solid rgba(255,255,255,.15);
+  background: var(--bg-card); color: var(--text-muted);
+  border: 1px solid var(--border-light);
 }
-.seq__btn--ghost:hover { border-color: rgba(255,255,255,.4); color: #fff; }
+.seq__btn--ghost:hover { border-color: var(--border-light); background: var(--bg-hover); color: var(--text); }
 .seq__flash {
-  padding: 10px 14px; font-weight: 600; min-height: 38px; font-size: 14px;
+  padding: 8px 12px; border-radius: var(--r-sm);
+  font-weight: 600; min-height: 36px; font-size: 14px;
 }
-.seq__flash[data-ok="1"] {
-  background: rgba(0,232,135,.1); color: #00e887;
-  border: 1px solid rgba(0,232,135,.2);
-}
-.seq__flash[data-ok="0"] {
-  background: rgba(255,59,78,.1); color: #ff3b4e;
-  border: 1px solid rgba(255,59,78,.2);
-}
+.seq__flash[data-ok="1"] { background: var(--green-dim); color: var(--green); border: 1px solid rgba(0,224,135,.2); }
+.seq__flash[data-ok="0"] { background: var(--red-dim);   color: var(--red);   border: 1px solid rgba(255,77,90,.2); }

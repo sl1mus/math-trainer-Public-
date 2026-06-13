@@ -109,15 +109,16 @@ function renderLessons() {
     div.className = 'lesson';
     div.innerHTML = `
       <div class="lesson-bar" style="background:${color}"></div>
-      <div class="lesson-icon-wrap">${lesson.icon || '?'} &nbsp;${lesson.title}</div>
-      <h3>${lesson.desc}</h3>
-      <div class="lesson-stars">${starsHtml(n, '#fff')}</div>
+      <div class="lesson-icon-wrap" style="background:${color}22; color:${color}">${lesson.icon || '?'}</div>
+      <h3>${lesson.title}</h3>
+      <div class="meta">${lesson.desc}</div>
+      <div class="lesson-stars">${starsHtml(n, color)}</div>
       ${s.total ? `
         <div class="lesson-mini-bar">
           <div class="lesson-mini-fill" style="background:${color}; width:${pct}%"></div>
         </div>
         <div class="meta">${pct}% верно · ${s.total} заданий</div>
-      ` : '<div class="meta">Ещё не начато</div>'}
+      ` : '<div class="meta" style="color:var(--text-dim)">Ещё не начато</div>'}
       <div class="lesson-footer">
         <button class="btn btn-primary start-btn">Начать</button>
         ${s.total ? `<button class="btn btn-ghost reset-btn">Сбросить</button>` : ''}
