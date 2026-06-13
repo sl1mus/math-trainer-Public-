@@ -1,5 +1,5 @@
-/* Service Worker v0.5 */
-const CACHE = 'mt4-v0.5';
+/* Service Worker v0.6 */
+const CACHE = 'mt4-v0.6';
 const ASSETS = [
   './',
   './index.html',
