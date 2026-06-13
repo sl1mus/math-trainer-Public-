@@ -63,6 +63,58 @@ function formatMs(ms) {
   return `${m} мин ${r} сек`;
 }
 
+/* ── Confetti ────────────────────────────────────────────────── */
+function triggerConfetti() {
+  const canvas = document.createElement('canvas');
+  canvas.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9999;';
+  document.body.appendChild(canvas);
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width  = window.innerWidth;
+  const H = canvas.height = window.innerHeight;
+
+  const COLORS = ['#ffffff','#00e887','#5b8eff','#ffcd3c','#ff3b4e','#a06dff','#00c8ff'];
+  const COUNT  = 120;
+
+  const pieces = Array.from({ length: COUNT }, () => ({
+    x:  Math.random() * W,
+    y:  -20 - Math.random() * H * 0.5,
+    w:  Math.random() * 9 + 5,
+    h:  Math.random() * 5 + 3,
+    color: COLORS[Math.floor(Math.random() * COLORS.length)],
+    rot: Math.random() * Math.PI * 2,
+    drot: (Math.random() - 0.5) * 0.18,
+    vx:  (Math.random() - 0.5) * 4,
+    vy:  Math.random() * 4 + 2,
+    alpha: 1,
+  }));
+
+  let raf;
+  const tick = () => {
+    ctx.clearRect(0, 0, W, H);
+    let alive = false;
+    for (const p of pieces) {
+      p.x   += p.vx;
+      p.y   += p.vy;
+      p.vy  += 0.12;           // gravity
+      p.vx  *= 0.99;           // air resistance
+      p.rot += p.drot;
+      if (p.y > H * 0.75) p.alpha = Math.max(0, p.alpha - 0.025);
+      if (p.alpha > 0) alive = true;
+      ctx.save();
+      ctx.globalAlpha = p.alpha;
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+      ctx.restore();
+    }
+    if (alive) raf = requestAnimationFrame(tick);
+    else canvas.remove();
+  };
+  raf = requestAnimationFrame(tick);
+  setTimeout(() => { cancelAnimationFrame(raf); canvas.remove(); }, 4000);
+}
+
 /* ── Boot ────────────────────────────────────────────────────── */
 fetch(LESSONS_URL)
   .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
@@ -296,6 +348,7 @@ function checkAnswer() {
     fb.classList.add('ok');
     el.checkBtn.disabled = true; el.hintBtn.disabled = true;
     el.nextBtn.classList.remove('hidden');
+    triggerConfetti();
     if (!State.exerciseRecorded) { State.exerciseRecorded = true; updateProgress(true); }
 
   } else if (State.attemptsForCurrent >= MAX_ATTEMPTS) {
