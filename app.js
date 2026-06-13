@@ -1,8 +1,12 @@
-/* v0.6 */
+/* v0.7 */
 const LESSONS_URL = 'data/lessons.json';
-const LS_KEY      = 'mt4_stats_v0_1';
-const LS_BEST     = 'mt4_best_v0_1';
+const LS_USERS    = 'mt4_users_v1';
+const LS_CURRENT  = 'mt4_current_user';
 const MAX_ATTEMPTS = 3;
+
+let currentUserId = null;
+function statsKey() { return `mt4_stats_v0_1_${currentUserId || 'guest'}`; }
+function bestKey()  { return `mt4_best_v0_1_${currentUserId || 'guest'}`; }
 
 const State = {
   lessons: [],
@@ -20,6 +24,7 @@ const el = {
   lessonList:    document.getElementById('lesson-list'),
   exerciseArea:  document.getElementById('exercise-area'),
   intro:         document.getElementById('intro'),
+  auth:          document.getElementById('auth-screen'),
   summary:       document.getElementById('summary-area'),
   summaryBody:   document.getElementById('summary-body'),
   lessonTitle:   document.getElementById('lesson-title'),
@@ -32,13 +37,76 @@ const el = {
   nextBtn:       document.getElementById('next-btn'),
   retryBtn:      document.getElementById('retry-wrong-btn'),
   globalStats:   document.getElementById('global-stats'),
+  headerUser:    document.getElementById('header-user'),
+  yorkieWrap:    document.getElementById('yorkie-wrap'),
 };
 
 /* ── Storage ─────────────────────────────────────────────────── */
-function loadStats()     { try { return JSON.parse(localStorage.getItem(LS_KEY)  || '{}'); } catch(e) { return {}; } }
-function saveStats(s)    { localStorage.setItem(LS_KEY,  JSON.stringify(s)); }
-function loadBest()      { try { return JSON.parse(localStorage.getItem(LS_BEST) || '{}'); } catch(e) { return {}; } }
-function saveBest(b)     { localStorage.setItem(LS_BEST, JSON.stringify(b)); }
+function loadStats()  { try { return JSON.parse(localStorage.getItem(statsKey()) || '{}'); } catch(e) { return {}; } }
+function saveStats(s) { localStorage.setItem(statsKey(), JSON.stringify(s)); }
+function loadBest()   { try { return JSON.parse(localStorage.getItem(bestKey())  || '{}'); } catch(e) { return {}; } }
+function saveBest(b)  { localStorage.setItem(bestKey(),  JSON.stringify(b)); }
+
+/* ── Users ───────────────────────────────────────────────────── */
+function getUsers()    { try { return JSON.parse(localStorage.getItem(LS_USERS) || '[]'); } catch(e) { return []; } }
+function saveUsers(u)  { localStorage.setItem(LS_USERS, JSON.stringify(u)); }
+
+function createUser(name) {
+  const users = getUsers();
+  const id    = 'u' + Date.now();
+  users.push({ id, name: name.trim() });
+  saveUsers(users);
+  return id;
+}
+
+function updateHeaderUser(name) {
+  if (name) {
+    el.headerUser.textContent = name;
+    el.headerUser.classList.remove('hidden');
+  } else {
+    el.headerUser.classList.add('hidden');
+  }
+}
+
+function loginAs(userId) {
+  currentUserId = userId;
+  localStorage.setItem(LS_CURRENT, userId);
+  const user = getUsers().find(u => u.id === userId);
+  updateHeaderUser(user ? user.name : '');
+  show('home');
+}
+
+function logoutUser() {
+  localStorage.removeItem(LS_CURRENT);
+  currentUserId = null;
+  stopYorkie();
+  show('auth');
+}
+
+function renderAuthScreen() {
+  const users    = getUsers();
+  const userList = document.getElementById('auth-user-list');
+  const nameInp  = document.getElementById('auth-name-input');
+  const startBtn = document.getElementById('auth-start-btn');
+
+  userList.innerHTML = '';
+  users.forEach(u => {
+    const card = document.createElement('button');
+    card.className = 'auth-user-card';
+    card.innerHTML = `<div class="auth-avatar">${u.name.charAt(0).toUpperCase()}</div>${u.name}`;
+    card.onclick = () => loginAs(u.id);
+    userList.appendChild(card);
+  });
+
+  startBtn.onclick = () => {
+    const name = nameInp.value.trim();
+    if (!name) { nameInp.focus(); return; }
+    const id = createUser(name);
+    loginAs(id);
+  };
+  nameInp.onkeydown = e => { if (e.key === 'Enter') startBtn.click(); };
+  if (!users.length) requestAnimationFrame(() => nameInp.focus());
+}
 
 /* ── Helpers ─────────────────────────────────────────────────── */
 function shuffle(arr) {
@@ -120,9 +188,18 @@ function triggerConfetti() {
 /* ── Boot ────────────────────────────────────────────────────── */
 fetch(LESSONS_URL)
   .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
-  .then(data => { State.lessons = data.lessons; renderLessons(); })
+  .then(data => {
+    State.lessons = data.lessons;
+    const savedId = localStorage.getItem(LS_CURRENT);
+    if (savedId) {
+      const user = getUsers().find(u => u.id === savedId);
+      if (user) { currentUserId = savedId; updateHeaderUser(user.name); show('home'); return; }
+    }
+    show('auth');
+  })
   .catch(() => {
     el.lessonList.innerHTML = '<p style="color:var(--red);padding:16px">Не удалось загрузить задания. Обновите страницу.</p>';
+    show('auth');
   });
 
 if ('serviceWorker' in navigator) {
@@ -215,11 +292,14 @@ function startReviewMode() {
 }
 
 function show(screen) {
+  el.auth.classList.add('hidden');
   el.intro.classList.add('hidden');
   el.exerciseArea.classList.add('hidden');
   el.summary.classList.add('hidden');
+  if (screen !== 'exercise') stopYorkie();
+  if (screen === 'auth')     { el.auth.classList.remove('hidden'); renderAuthScreen(); }
   if (screen === 'home')     { el.intro.classList.remove('hidden'); renderLessons(); }
-  if (screen === 'exercise') { el.exerciseArea.classList.remove('hidden'); }
+  if (screen === 'exercise') { el.exerciseArea.classList.remove('hidden'); scheduleYorkie(); }
   if (screen === 'summary')  { el.summary.classList.remove('hidden'); }
 }
 
@@ -421,7 +501,87 @@ function finishLesson() {
   }
 }
 
+/* ── Yorkie ──────────────────────────────────────────────────── */
+const YORKIE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 110 78" width="110" height="78">
+  <path d="M20 42 C11 32 10 20 17 13 C21 8 27 11 25 19" fill="none" stroke="#1c1c28" stroke-width="6" stroke-linecap="round"/>
+  <ellipse cx="50" cy="48" rx="30" ry="17" fill="#1c1c28"/>
+  <ellipse cx="57" cy="54" rx="19" ry="10" fill="#c47a10"/>
+  <rect x="72" y="31" width="15" height="21" rx="7" fill="#1c1c28"/>
+  <circle cx="87" cy="27" r="17" fill="#1c1c28"/>
+  <ellipse cx="97" cy="33" rx="10" ry="8" fill="#c47a10"/>
+  <ellipse cx="98" cy="40" rx="8" ry="6" fill="#e8951a"/>
+  <circle cx="91" cy="22" r="4" fill="#0c0c12"/>
+  <circle cx="92.2" cy="20.8" r="1.4" fill="rgba(255,255,255,0.75)"/>
+  <ellipse cx="102" cy="30" rx="4" ry="3" fill="#0c0c12"/>
+  <ellipse cx="91" cy="16" rx="3" ry="2.3" fill="#c47a10"/>
+  <polygon points="79,14 72,1 86,9" fill="#141420"/>
+  <polygon points="87,12 81,0 96,7" fill="#141420"/>
+  <polygon points="87,13 83,3 94,9" fill="#9a5a08"/>
+  <rect class="leg leg-a" x="26" y="61" width="9" height="15" rx="4" fill="#c47a10"/>
+  <rect class="leg leg-b" x="37" y="62" width="8" height="14" rx="4" fill="#1c1c28"/>
+  <rect class="leg leg-b" x="65" y="59" width="9" height="16" rx="4" fill="#c47a10"/>
+  <rect class="leg leg-a" x="75" y="60" width="8" height="15" rx="4" fill="#1c1c28"/>
+</svg>`;
+
+const YORKIE_MSGS = [
+  'Ты сюда пришёл учиться, а не играть! 📚',
+  'Математика сама себя не выучит! 🧮',
+  'Гав! Решай задачи, а не гоняйся за мной!',
+  'Сначала учёба, потом прогулка! 🐾',
+  'Я занятой пёс. И ты тоже будь занятым! ✏️',
+  'Стоп! Вернись к заданию! 🐕',
+];
+
+let yorkieTimer   = null;
+let yorkieActive  = false;
+
+function spawnYorkie() {
+  if (!yorkieActive) return;
+  const wrap = el.yorkieWrap;
+  wrap.innerHTML = YORKIE_SVG;
+  wrap.classList.add('active');
+
+  const ltr      = Math.random() > 0.5;
+  const duration = (3.5 + Math.random() * 1.5).toFixed(2);
+  wrap.style.animation = 'none';
+  wrap.offsetHeight;
+  wrap.style.animation = ltr
+    ? `yorkie-run-ltr ${duration}s linear forwards`
+    : `yorkie-run-rtl ${duration}s linear forwards`;
+
+  wrap.addEventListener('animationend', () => {
+    wrap.innerHTML = '';
+    wrap.classList.remove('active');
+    wrap.style.animation = 'none';
+    if (yorkieActive) yorkieTimer = setTimeout(spawnYorkie, 30000 + Math.random() * 60000);
+  }, { once: true });
+}
+
+function scheduleYorkie() {
+  yorkieActive = true;
+  yorkieTimer  = setTimeout(spawnYorkie, 15000 + Math.random() * 25000);
+}
+
+function stopYorkie() {
+  yorkieActive = false;
+  clearTimeout(yorkieTimer);
+  el.yorkieWrap.innerHTML      = '';
+  el.yorkieWrap.style.animation = 'none';
+  el.yorkieWrap.classList.remove('active');
+}
+
+el.yorkieWrap.onclick = () => {
+  if (el.yorkieWrap.querySelector('.yorkie-bubble')) return;
+  const msg    = YORKIE_MSGS[Math.floor(Math.random() * YORKIE_MSGS.length)];
+  const bubble = document.createElement('div');
+  bubble.className   = 'yorkie-bubble';
+  bubble.textContent = msg;
+  el.yorkieWrap.appendChild(bubble);
+  setTimeout(() => bubble.remove(), 2500);
+};
+
 /* ── Event wiring ────────────────────────────────────────────── */
+el.headerUser.onclick    = logoutUser;
 el.backToLessons.onclick = () => show('home');
 el.toHome.onclick        = () => show('home');
 el.hintBtn.onclick       = revealHint;

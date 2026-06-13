@@ -20,13 +20,36 @@
           <div class="brand-sub">4 класс · Программа Петерсон</div>
         </div>
       </div>
-      <span class="version">v0.6</span>
+      <div class="header-right">
+        <div id="header-user" class="header-user hidden"></div>
+        <span class="version">v0.7</span>
+      </div>
     </div>
   </header>
 
   <main class="container">
 
-    <section id="intro">
+    <section id="auth-screen" class="hidden">
+      <div class="auth-hero">
+        <div class="auth-brand">
+          <div class="brand-sigma large-sigma">Σ</div>
+          <div class="auth-headline">УЧИСЬ.<br>ТРЕНИРУЙСЯ.<br>ПОБЕЖДАЙ.</div>
+        </div>
+        <div class="auth-panel">
+          <div class="auth-panel-title">КТО ЗАНИМАЕТСЯ?</div>
+          <div id="auth-user-list" class="auth-user-list"></div>
+          <div class="auth-new">
+            <div class="auth-new-label">ДОБАВИТЬ УЧЕНИКА</div>
+            <div class="auth-new-row">
+              <input id="auth-name-input" type="text" placeholder="Введите имя" maxlength="30" class="auth-input"/>
+              <button id="auth-start-btn" class="btn btn-primary">Начать →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="intro" class="hidden">
       <div class="home-hero">
         <div class="home-hero-title">УЧИСЬ.<br>ТРЕНИРУЙСЯ.<br>ПОБЕЖДАЙ.</div>
         <div class="home-hero-sub">Математика 4 класс · Программа Петерсон · 15 тем · 170+ заданий</div>
@@ -69,6 +92,8 @@
   <footer class="app-footer">
     <small>© 2025 · Open-source на GitHub Pages · MIT License</small>
   </footer>
+
+  <div id="yorkie-wrap" class="yorkie-wrap"></div>
 
   <script src="SRC/components/SequenceOrderTask.js"></script>
   <script src="app.js"></script>

@@ -1,5 +1,5 @@
-/* Service Worker v0.6 — network-first */
-const CACHE = 'mt4-v0.6';
+/* Service Worker v0.7 — network-first */
+const CACHE = 'mt4-v0.7';
 const STATIC = [
   './data/lessons.json',
   './SRC/components/SequenceOrderTask.js',
