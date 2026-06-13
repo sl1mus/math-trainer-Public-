@@ -66,53 +66,55 @@ function formatMs(ms) {
 /* ── Confetti ────────────────────────────────────────────────── */
 function triggerConfetti() {
   const canvas = document.createElement('canvas');
-  canvas.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9999;';
+  canvas.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;pointer-events:none;z-index:99999;';
   document.body.appendChild(canvas);
   const ctx = canvas.getContext('2d');
-  const W = canvas.width  = window.innerWidth;
-  const H = canvas.height = window.innerHeight;
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.width  = window.innerWidth  * dpr;
+  const H = canvas.height = window.innerHeight * dpr;
+  ctx.scale(dpr, dpr);
+  const w = window.innerWidth, h = window.innerHeight;
 
-  const COLORS = ['#ffffff','#00e887','#5b8eff','#ffcd3c','#ff3b4e','#a06dff','#00c8ff'];
-  const COUNT  = 120;
+  const COLORS = ['#ffffff','#00e887','#5b8eff','#ffcd3c','#ff3b4e','#a06dff','#00c8ff','#ff8c00'];
 
-  const pieces = Array.from({ length: COUNT }, () => ({
-    x:  Math.random() * W,
-    y:  -20 - Math.random() * H * 0.5,
-    w:  Math.random() * 9 + 5,
-    h:  Math.random() * 5 + 3,
+  const pieces = Array.from({ length: 150 }, () => ({
+    x:    Math.random() * w,
+    y:    -30 - Math.random() * h * 0.6,
+    pw:   Math.random() * 10 + 6,
+    ph:   Math.random() * 6  + 4,
     color: COLORS[Math.floor(Math.random() * COLORS.length)],
-    rot: Math.random() * Math.PI * 2,
-    drot: (Math.random() - 0.5) * 0.18,
-    vx:  (Math.random() - 0.5) * 4,
-    vy:  Math.random() * 4 + 2,
+    rot:  Math.random() * Math.PI * 2,
+    drot: (Math.random() - 0.5) * 0.22,
+    vx:   (Math.random() - 0.5) * 5,
+    vy:   Math.random() * 5 + 3,
     alpha: 1,
   }));
 
   let raf;
   const tick = () => {
-    ctx.clearRect(0, 0, W, H);
+    ctx.clearRect(0, 0, w, h);
     let alive = false;
     for (const p of pieces) {
       p.x   += p.vx;
       p.y   += p.vy;
-      p.vy  += 0.12;           // gravity
-      p.vx  *= 0.99;           // air resistance
+      p.vy  += 0.15;
+      p.vx  *= 0.99;
       p.rot += p.drot;
-      if (p.y > H * 0.75) p.alpha = Math.max(0, p.alpha - 0.025);
+      if (p.y > h * 0.7) p.alpha = Math.max(0, p.alpha - 0.03);
       if (p.alpha > 0) alive = true;
       ctx.save();
       ctx.globalAlpha = p.alpha;
       ctx.translate(p.x, p.y);
       ctx.rotate(p.rot);
       ctx.fillStyle = p.color;
-      ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+      ctx.fillRect(-p.pw / 2, -p.ph / 2, p.pw, p.ph);
       ctx.restore();
     }
     if (alive) raf = requestAnimationFrame(tick);
     else canvas.remove();
   };
   raf = requestAnimationFrame(tick);
-  setTimeout(() => { cancelAnimationFrame(raf); canvas.remove(); }, 4000);
+  setTimeout(() => { cancelAnimationFrame(raf); canvas.remove(); }, 4500);
 }
 
 /* ── Boot ────────────────────────────────────────────────────── */
