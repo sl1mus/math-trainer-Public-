@@ -1,10 +1,16 @@
-/* v0.3 */
+/* v0.4 */
 const LESSONS_URL = 'data/lessons.json';
 const LS_KEY = 'mt4_stats_v0_1';
 
 const State = {
-  lessons: [], currentLesson: null, idx: 0, score: 0,
-  attemptsForCurrent: 0, startedAt: 0, exerciseRecorded: false,
+  lessons: [],
+  currentLesson: null,
+  shuffledExercises: [],
+  idx: 0,
+  score: 0,
+  attemptsForCurrent: 0,
+  startedAt: 0,
+  exerciseRecorded: false,
 };
 
 const el = {
@@ -28,6 +34,15 @@ function loadStats() {
 }
 function saveStats(stats) { localStorage.setItem(LS_KEY, JSON.stringify(stats)); }
 
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
 fetch(LESSONS_URL)
   .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
   .then(data => { State.lessons = data.lessons; renderLessons(); })
@@ -41,22 +56,47 @@ function renderLessons() {
   State.lessons.forEach(lesson => {
     const s = stats[lesson.id] || { correct: 0, total: 0, timeMs: 0 };
     const pct = s.total ? Math.round(100 * s.correct / s.total) : 0;
+    const hasProgress = s.total > 0;
+    const color = lesson.color || '#9e84ff';
+    const icon = lesson.icon || '?';
+
     const div = document.createElement('div');
     div.className = 'lesson';
+    div.style.borderTop = `4px solid ${color}`;
     div.innerHTML = `
+      <div class="lesson-icon-wrap" style="background:${color}22">
+        <span class="lesson-icon" style="color:${color}">${icon}</span>
+      </div>
       <h3>${lesson.title}</h3>
       <div class="meta">${lesson.desc}</div>
-      <div class="meta">Правильно: ${pct}% · Пройдено заданий: ${s.total || 0}</div>
-      <button class="btn btn-primary">Начать</button>
+      <div class="meta">${hasProgress
+        ? `Правильно: <strong>${pct}%</strong> · Заданий: ${s.total}`
+        : 'Ещё не начато'
+      }</div>
+      <div class="lesson-footer">
+        <button class="btn btn-primary start-btn">Начать</button>
+        ${hasProgress ? '<button class="btn btn-ghost reset-btn">Сбросить</button>' : ''}
+      </div>
     `;
-    div.querySelector('button').onclick = () => startLesson(lesson.id);
+    div.querySelector('.start-btn').onclick = () => startLesson(lesson.id);
+    if (hasProgress) {
+      div.querySelector('.reset-btn').onclick = () => resetLesson(lesson.id);
+    }
     el.lessonList.appendChild(div);
   });
+}
+
+function resetLesson(lessonId) {
+  const stats = loadStats();
+  delete stats[lessonId];
+  saveStats(stats);
+  renderLessons();
 }
 
 function startLesson(lessonId) {
   const lesson = State.lessons.find(l => l.id === lessonId);
   State.currentLesson = lesson;
+  State.shuffledExercises = shuffle(lesson.exercises);
   State.idx = 0;
   State.score = 0;
   State.startedAt = Date.now();
@@ -79,11 +119,18 @@ el.toLessonsFromSummary.onclick = () => {
   renderLessons();
 };
 
-function currentExercise() { return State.currentLesson.exercises[State.idx]; }
+function currentExercise() { return State.shuffledExercises[State.idx]; }
 
 function showExercise() {
   const ex = currentExercise();
-  el.progress.textContent = `Задание ${State.idx + 1} из ${State.currentLesson.exercises.length}`;
+  const total = State.shuffledExercises.length;
+  const pct = Math.round(100 * State.idx / total);
+
+  el.progress.innerHTML = `
+    <div class="progress-label">Задание ${State.idx + 1} из ${total}</div>
+    <div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div>
+  `;
+
   State.attemptsForCurrent = 0;
   State.exerciseRecorded = false;
   el.nextBtn.classList.add('hidden');
@@ -99,7 +146,7 @@ function showExercise() {
   if (ex.type === 'choice') {
     const box = document.createElement('div');
     box.className = 'choices';
-    ex.options.forEach(opt => {
+    shuffle(ex.options).forEach(opt => {
       const c = document.createElement('div');
       c.className = 'choice';
       c.textContent = opt;
@@ -119,6 +166,8 @@ function showExercise() {
     input.dataset.role = 'answer';
     input.onkeydown = e => { if (e.key === 'Enter') checkAnswer(); };
     container.appendChild(input);
+    // Focus input on desktop
+    requestAnimationFrame(() => input.focus());
   }
 
   if (ex.type === 'order') {
@@ -136,9 +185,9 @@ function showExercise() {
           State.exerciseRecorded = true;
           State.score += 1;
           el.nextBtn.classList.remove('hidden');
-          updateProgressAfterExercise(true);
+          updateProgress(true);
         } else if (!ok && !State.exerciseRecorded) {
-          updateProgressAfterExercise(false);
+          updateProgress(false);
         }
       },
     });
@@ -210,7 +259,7 @@ function checkAnswer() {
     el.nextBtn.classList.remove('hidden');
     if (!State.exerciseRecorded) {
       State.exerciseRecorded = true;
-      updateProgressAfterExercise(true);
+      updateProgress(true);
     }
   } else if (State.attemptsForCurrent >= MAX_ATTEMPTS) {
     fb.textContent = `Правильный ответ: ${ex.answer}. Не расстраивайтесь — продолжайте!`;
@@ -220,7 +269,7 @@ function checkAnswer() {
     el.nextBtn.classList.remove('hidden');
     if (!State.exerciseRecorded) {
       State.exerciseRecorded = true;
-      updateProgressAfterExercise(false);
+      updateProgress(false);
     }
   } else {
     fb.textContent = State.attemptsForCurrent === 1
@@ -230,7 +279,7 @@ function checkAnswer() {
   }
 }
 
-function updateProgressAfterExercise(correct) {
+function updateProgress(correct) {
   const key = State.currentLesson.id;
   const stats = loadStats();
   const item = stats[key] || { correct: 0, total: 0, timeMs: 0 };
@@ -241,7 +290,7 @@ function updateProgressAfterExercise(correct) {
 }
 
 function nextExercise() {
-  if (State.idx < State.currentLesson.exercises.length - 1) {
+  if (State.idx < State.shuffledExercises.length - 1) {
     State.idx += 1;
     showExercise();
   } else {
@@ -257,18 +306,22 @@ function finishLesson() {
   item.timeMs += duration;
   stats[key] = item;
   saveStats(stats);
-  const total = State.currentLesson.exercises.length;
-  const pct = Math.round(100 * (State.score / total));
+
+  const total = State.shuffledExercises.length;
+  const pct = Math.round(100 * State.score / total);
+  const medal = pct >= 90 ? '🏆' : pct >= 70 ? '⭐' : pct >= 50 ? '👍' : '💪';
+
   el.exerciseArea.classList.add('hidden');
   el.summary.classList.remove('hidden');
   el.summaryBody.innerHTML = `
+    <div style="text-align:center;font-size:40px;margin-bottom:8px">${medal}</div>
     <div class="stat">
       <div class="kpi"><div>Баллы</div><div style="font-size:32px;font-weight:800">${State.score.toFixed(1)}</div></div>
-      <div class="kpi"><div>Процент</div><div style="font-size:32px;font-weight:800">${pct}%</div></div>
+      <div class="kpi"><div>Результат</div><div style="font-size:32px;font-weight:800">${pct}%</div></div>
       <div class="kpi"><div>Заданий</div><div style="font-size:32px;font-weight:800">${total}</div></div>
       <div class="kpi"><div>Время</div><div style="font-size:18px">${formatMs(duration)}</div></div>
     </div>
-    <p class="meta">Подсказки уменьшают баллы за задание. Повторите блок для улучшения результата.</p>
+    <p class="meta" style="margin-top:12px">Подсказки уменьшают баллы за задание. Повторите блок для улучшения результата.</p>
   `;
 }
 
